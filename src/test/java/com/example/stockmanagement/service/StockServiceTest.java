@@ -1,0 +1,72 @@
+package com.example.stockmanagement.service;
+
+import com.example.stockmanagement.domain.Stock;
+import com.example.stockmanagement.repository.StockRepository;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+class StockServiceTest {
+
+    @Autowired
+    private StockService stockService;
+
+    @Autowired
+    private StockRepository stockRepository;
+
+    @BeforeEach
+    public void before() {
+        Stock stock = new Stock(1L, 100L);
+        stockRepository.saveAndFlush(stock);
+    }
+
+    @AfterEach
+    public void after() {
+        stockRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("재고 감소 테스트")
+    public void stock_decrease() {
+        stockService.decrease(1L, 1L);
+
+        // 100 - 1 = 99
+        Stock stock = stockRepository.findById(1L).orElseThrow();
+
+        assertEquals(99, stock.getQuantity());
+    }
+
+    @Test
+    @DisplayName("동시에 100개 요청")
+    public void stock_decrease_many() throws InterruptedException {
+        int threadCount = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(32);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+//            executor.execute();
+            executor.submit(() -> {
+                try {
+                    stockService.decrease(1L, 1L);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        Stock stock = stockRepository.findById(1L).orElseThrow();
+
+        // 100 - (1 * 100) = 0
+        assertEquals(0L, stock.getQuantity());
+    }
+
+}

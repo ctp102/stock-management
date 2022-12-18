@@ -44,15 +44,14 @@ class StockServiceTest {
     }
 
     @Test
-    @DisplayName("동시에 100개 요청")
+    @DisplayName("동시에 재고 감소 100개 요청")
     public void stock_decrease_many() throws InterruptedException {
         int threadCount = 100;
         ExecutorService executor = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(threadCount);
 
         for (int i = 0; i < threadCount; i++) {
-//            executor.execute();
-            executor.submit(() -> {
+            executor.execute(() -> {
                 try {
                     stockService.decrease(1L, 1L);
                 } finally {
@@ -67,6 +66,9 @@ class StockServiceTest {
 
         // 100 - (1 * 100) = 0
         assertEquals(0L, stock.getQuantity());
+
+        // race condition으로 인해 테스트가 실패한다.
+        // race condition: 2개 이상의 쓰레드가 하나의 데이터에 접근할 수 있고 동시에 변경할 때 발생하는 문제
     }
 
 }

@@ -1,9 +1,11 @@
 package com.example.stockmanagement.service;
 
 import com.example.stockmanagement.domain.Stock;
-import com.example.stockmanagement.facade.OptimisticLockStockFacade;
 import com.example.stockmanagement.repository.StockRepository;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -18,12 +20,6 @@ class StockServiceTest {
 
     @Autowired
     private StockService stockService;
-
-    @Autowired
-    private PessimisticLockService pessimisticLockService;
-
-    @Autowired
-    private OptimisticLockStockFacade optimisticLockStockFacade;
 
     @Autowired
     private StockRepository stockRepository;
@@ -89,58 +85,6 @@ class StockServiceTest {
             executor.execute(() -> {
                 try {
                     stockService.decreaseV2(1L, 1L);
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        latch.await();
-
-        Stock stock = stockRepository.findById(1L).orElseThrow();
-
-        // 100 - (1 * 100) = 0
-        assertEquals(0L, stock.getQuantity());
-    }
-
-    @Test
-    @DisplayName("동시에 재고 감소 100개 요청 --> Pessimistic Lock을 이용하여 race condition 문제 해결")
-    public void stock_decrease_many_with_pessimistic_lock() throws InterruptedException {
-        int threadCount = 100;
-        ExecutorService executor = Executors.newFixedThreadPool(32);
-        CountDownLatch latch = new CountDownLatch(threadCount);
-
-        for (int i = 0; i < threadCount; i++) {
-            executor.execute(() -> {
-                try {
-                    pessimisticLockService.decrease(1L, 1L);
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        latch.await();
-
-        Stock stock = stockRepository.findById(1L).orElseThrow();
-
-        // 100 - (1 * 100) = 0
-        assertEquals(0L, stock.getQuantity());
-    }
-
-    @Test
-    @DisplayName("동시에 재고 감소 100개 요청 --> Optimistic Lock을 이용하여 race condition 문제 해결")
-    public void stock_decrease_many_with_optimistic_lock() throws InterruptedException {
-        int threadCount = 100;
-        ExecutorService executor = Executors.newFixedThreadPool(32);
-        CountDownLatch latch = new CountDownLatch(threadCount);
-
-        for (int i = 0; i < threadCount; i++) {
-            executor.execute(() -> {
-                try {
-                    optimisticLockStockFacade.decrease(1L, 1L);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
                 } finally {
                     latch.countDown();
                 }

@@ -19,6 +19,9 @@ class StockServiceTest {
     private StockService stockService;
 
     @Autowired
+    private PessimisticLockService pessimisticLockService;
+
+    @Autowired
     private StockRepository stockRepository;
 
     @BeforeEach
@@ -44,7 +47,7 @@ class StockServiceTest {
     }
 
     @Test
-    @DisplayName("동시에 재고 감소 100개 요청")
+    @DisplayName("동시에 재고 감소 100개 요청 --> race condition 문제 발생")
     public void stock_decrease_many() throws InterruptedException {
         int threadCount = 100;
         ExecutorService executor = Executors.newFixedThreadPool(32);
@@ -54,6 +57,34 @@ class StockServiceTest {
             executor.execute(() -> {
                 try {
                     stockService.decrease(1L, 1L);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        Stock stock = stockRepository.findById(1L).orElseThrow();
+
+        // 100 - (1 * 100) = 0
+        assertEquals(0L, stock.getQuantity());
+
+        // race condition으로 인해 테스트가 실패한다.
+        // race condition: 2개 이상의 쓰레드가 하나의 데이터에 접근할 수 있고 동시에 변경할 때 발생하는 문제
+    }
+
+    @Test
+    @DisplayName("동시에 재고 감소 100개 요청 --> synchronized 키워드로 race condition 문제 해결")
+    public void stock_decrease_many_with_synchronized() throws InterruptedException {
+        int threadCount = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(32);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+            executor.execute(() -> {
+                try {
+                    stockService.decreaseV2(1L, 1L);
                 } finally {
                     latch.countDown();
                 }

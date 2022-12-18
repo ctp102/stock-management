@@ -5,8 +5,8 @@ import com.example.stockmanagement.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import javax.transaction.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +36,20 @@ public class StockService {
      * @param quantity
      */
     public synchronized void decreaseV2(Long id, Long quantity) {
+        Stock stock = stockRepository.findById(id).orElseThrow();
+        stock.decrease(quantity);
+        stockRepository.saveAndFlush(stock);
+    }
+
+    /**
+     * Named Lock에 사용되는 메서드
+     * 부모의 트랜잭션과 별도로 실행되어야 하므로 Propagation.REQUIRES_NEW 처리
+     *
+     * @param id
+     * @param quantity
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public synchronized void decreaseV3(Long id, Long quantity) {
         Stock stock = stockRepository.findById(id).orElseThrow();
         stock.decrease(quantity);
         stockRepository.saveAndFlush(stock);

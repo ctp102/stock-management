@@ -9,7 +9,7 @@ MySQL, Spring Data JPA, Redis 사용
 
 ## synchronzied
 - synchronzied 키워드를 메서드에 붙이면 각 프로세스에서 발생하는 Race Condition 문제를 해결할 수 있다. 
-- 그러나 서버가 2대 이상일 경우에는 정합성을 보장해주지 못한다.
+- 그러나 synchronized는 하나의 서버에서만 보장되기 때문에 서버가 2대 이상일 경우에는 정합성을 보장해주지 못한다. 따라서 권장하지 않는 방법이다.
 
 ## DB Lock
 1. **Optimistic Lock**
